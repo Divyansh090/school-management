@@ -117,9 +117,9 @@ export async function POST(request: NextRequest) {
                 }
               }
             ).end(buffer)
-          }) as any
+          })
 
-          imageUrl = uploadResult.secure_url
+          imageUrl = (uploadResult as { secure_url: string }).secure_url
         } else {
           // Development: Save to local filesystem
           const { writeFile, mkdir } = await import('fs/promises')

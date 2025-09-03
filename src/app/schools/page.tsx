@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { School, MapPin, Phone, Mail, Building } from 'lucide-react'
+import Image from 'next/image'
 
 interface SchoolData {
   id: number
@@ -116,9 +117,11 @@ export default function SchoolsPage() {
               >
                 <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                   {imageUrl ? (
-                    <img
+                    <Image
                       src={imageUrl}
                       alt={school.name}
+                      width={100}
+                      height={100}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
                         // Fallback to placeholder if image fails to load
