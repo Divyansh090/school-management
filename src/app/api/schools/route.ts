@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { v2 as cloudinary } from 'cloudinary'
 
 const prisma = new PrismaClient()
+
+// Configure Cloudinary (only if environment variables are set)
+if (process.env.CLOUDINARY_CLOUD_NAME) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  })
+}
 
 // GET - Fetch all schools
 export async function GET() {
@@ -64,7 +72,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let imageName = null
+    let imageUrl = null
 
     // Handle image upload
     if (image && image.size > 0) {
@@ -84,20 +92,62 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Generate unique filename
-      const timestamp = Date.now()
-      const extension = path.extname(image.name)
-      imageName = `school-${timestamp}${extension}`
+      try {
+        if (process.env.CLOUDINARY_CLOUD_NAME) {
+          // Production: Upload to Cloudinary
+          const bytes = await image.arrayBuffer()
+          const buffer = Buffer.from(bytes)
+          
+          const uploadResult = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+              { 
+                folder: 'schools',
+                resource_type: 'auto',
+                transformation: [
+                  { width: 800, height: 600, crop: 'limit' },
+                  { quality: 'auto' }
+                ]
+              },
+              (error, result) => {
+                if (error) {
+                  console.error('Cloudinary upload error:', error)
+                  reject(error)
+                } else {
+                  resolve(result)
+                }
+              }
+            ).end(buffer)
+          }) as any
 
-      // Create directory if it doesn't exist
-      const uploadDir = path.join(process.cwd(), 'public', 'schoolImages')
-      await mkdir(uploadDir, { recursive: true })
+          imageUrl = uploadResult.secure_url
+        } else {
+          // Development: Save to local filesystem
+          const { writeFile, mkdir } = await import('fs/promises')
+          const path = await import('path')
+          
+          const timestamp = Date.now()
+          const extension = path.extname(image.name)
+          const imageName = `school-${timestamp}${extension}`
 
-      // Save file
-      const bytes = await image.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      const filePath = path.join(uploadDir, imageName)
-      await writeFile(filePath, buffer)
+          // Create directory if it doesn't exist
+          const uploadDir = path.join(process.cwd(), 'public', 'schoolImages')
+          await mkdir(uploadDir, { recursive: true })
+
+          // Save file
+          const bytes = await image.arrayBuffer()
+          const buffer = Buffer.from(bytes)
+          const filePath = path.join(uploadDir, imageName)
+          await writeFile(filePath, buffer)
+          
+          imageUrl = `/schoolImages/${imageName}`
+        }
+      } catch (uploadError) {
+        console.error('Image upload error:', uploadError)
+        return NextResponse.json(
+          { error: 'Failed to upload image' },
+          { status: 500 }
+        )
+      }
     }
 
     // Create school record
@@ -109,7 +159,7 @@ export async function POST(request: NextRequest) {
         state: state.trim(),
         contact: contact.trim(),
         email_id: email_id.trim().toLowerCase(),
-        image: imageName,
+        image: imageUrl,
       },
     })
 

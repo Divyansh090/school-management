@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { School, MapPin, Phone, Mail, Building } from 'lucide-react'
-import Image from 'next/image'
 
 interface SchoolData {
   id: number
@@ -39,6 +38,19 @@ export default function SchoolsPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Helper function to get image URL
+  const getImageUrl = (imageUrl: string | undefined) => {
+    if (!imageUrl) return null
+    
+    // If it's already a full URL (Cloudinary), return as-is
+    if (imageUrl.startsWith('http')) {
+      return imageUrl
+    }
+    
+    // If it's a local path, ensure it has the correct prefix
+    return imageUrl.startsWith('/') ? imageUrl : `/schoolImages/${imageUrl}`
   }
 
   if (isLoading) {
@@ -94,65 +106,72 @@ export default function SchoolsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {schools.map((school) => (
-            <div
-              key={school.id}
-              className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden group"
-            >
-              <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                {school.image ? (
-                  <Image
-                    src={`/schoolImages/${school.image}`}
-                    alt={school.name}
-                    height="100"
-                    width="100"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="text-center">
+          {schools.map((school) => {
+            const imageUrl = getImageUrl(school.image)
+            
+            return (
+              <div
+                key={school.id}
+                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden group"
+              >
+                <div className="relative h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={school.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        target.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden')
+                      }}
+                    />
+                  ) : null}
+                  <div className={`text-center ${imageUrl ? 'hidden' : ''} fallback-icon`}>
                     <School className="w-12 h-12 text-white mb-2 mx-auto" />
                     <p className="text-white text-sm opacity-80">No Image</p>
                   </div>
-                )}
-              </div>
-
-              <div className="p-6">
-                <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
-                  {school.name}
-                </h3>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-start text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="line-clamp-2">
-                      {school.address}, {school.city}, {school.state}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
-                    <span>{school.contact}</span>
-                  </div>
-
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
-                    <span className="truncate">{school.email_id}</span>
-                  </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">
-                      {school.city}, {school.state}
-                    </span>
-                    <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      View Details
-                    </button>
+                <div className="p-6">
+                  <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
+                    {school.name}
+                  </h3>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-start text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                      <span className="line-clamp-2">
+                        {school.address}, {school.city}, {school.state}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+                      <span>{school.contact}</span>
+                    </div>
+
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Mail className="w-4 h-4 mr-2 flex-shrink-0" />
+                      <span className="truncate">{school.email_id}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">
+                        {school.city}, {school.state}
+                      </span>
+                      <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
